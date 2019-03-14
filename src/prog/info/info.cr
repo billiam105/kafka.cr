@@ -9,7 +9,7 @@ class Info < App
     topic : String,
     day : Int32,
     count : Int64
-  
+
   option count : Bool, "-c", "--count", "Just count simply", false
   option before : Int64, "--before MSEC", "Used to ask for all messages before a certain time (ms)", -1
   option days : Int32, "--days NUM", "Show histogram publish counts for NUM days (causes NUM times reqs to kafka)[experimental]", 0
@@ -43,18 +43,18 @@ EOF
     meta = fetch_topic_metadata(topics, app_name)
 
     today = Time.now.at_end_of_day # midnight of today
-    records = (0..num).map{|n|
-#      p [n, today, (today - n.days), (today - n.days).epoch_ms]
-      ress = fetch_offsets(meta, (today - n.days).epoch_ms)
-      ress.map{|res| extract_topic_day_offsets(res, n)}
+    records = (0..num).map { |n|
+      #      p [n, today, (today - n.days), (today - n.days).epoch_ms]
+      ress = fetch_offsets(meta, (today - n.days).to_unix_ms)
+      ress.map { |res| extract_topic_day_offsets(res, n) }
     }.flatten
 
-    grouped = records.group_by{|r| [r.topic, r.day]}.map{|key, ary|
+    grouped = records.group_by { |r| [r.topic, r.day] }.map { |key, ary|
       t = key[0].not_nil!.to_s
       d = key[1].not_nil!.to_i
       TopicDayCount.new(t, d, ary.sum(&.count))
     }
-    sorted = grouped.sort_by{|r| "%s %04d" % [r.topic, r.day]}
+    sorted = grouped.sort_by { |r| "%s %04d" % [r.topic, r.day] }
 
     sorted.group_by(&.topic).each do |topic, records|
       puts "[#{topic}]"
@@ -79,7 +79,7 @@ EOF
     else
       topics = ([topic] + args).reject(&.empty?).uniq
     end
-    
+
     if topics.any?
       if days > 0
         return do_histogram_days(topics, days)
@@ -92,8 +92,8 @@ EOF
   end
 
   private def extract_topic_day_counts(res, day)
-    res.topic_partition_offsets.map{ |meta|
-      meta.partition_offsets.map{|po|
+    res.topic_partition_offsets.map { |meta|
+      meta.partition_offsets.map { |po|
         unless po.error_code == 0
           errmsg = Kafka::Protocol.errmsg(po.error_code)
           logger.error "#{meta.topic}##{po.partition}\t#{errmsg}"
@@ -102,13 +102,13 @@ EOF
       }
     }
   end
-  
+
   private def extract_topic_day_offsets(res, day)
-    res.topic_partition_offsets.map{ |meta|
-      meta.partition_offsets.map{|po|
-#        p [meta.topic, day, po.offsets]
+    res.topic_partition_offsets.map { |meta|
+      meta.partition_offsets.map { |po|
+        #        p [meta.topic, day, po.offsets]
         TopicDayCount.new(meta.topic, day, po.offset)
       }
     }
-  end 
+  end
 end

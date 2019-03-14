@@ -56,7 +56,7 @@ module Utils::GuessBinary
     end
 
     def initialize(bytes)
-      unpacker = MessagePack::Unpacker.new(bytes)
+      unpacker = MessagePack::IOUnpacker.new(bytes)
       value = unpacker.read_value.inspect
       super("(msgpack) #{value}", bytes)
     end
